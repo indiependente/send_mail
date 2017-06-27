@@ -42,7 +42,7 @@ def send(email):
 	s = smtplib.SMTP(email['smtp'] + ":" + email['port'])
 	s.ehlo()
 	s.starttls()
-	s.login(sndr, email['password'])
+	s.login(email['username'], email['password'])
 	# sendmail function takes 3 arguments: sender's address, recipient's address
 	# and message to send - here it is sent as one string.
 	s.sendmail(sndr, rcvr, msg.as_string())
