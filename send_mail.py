@@ -1,5 +1,8 @@
 #! /usr/bin/python
 """
+author: indiependente (Francesco Farina)
+email: rockerg991@gmail.com
+
 MIT License
 
 Copyright (c) 2017 
