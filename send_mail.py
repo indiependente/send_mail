@@ -31,12 +31,13 @@ import sys
 import json
 import urllib2
 import smtplib
+import threading
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-def send(email):
+def send(email, num):
 	CWD = os.getcwd()
 
 	sndr = email['from']
@@ -58,6 +59,7 @@ def send(email):
 	part1 = MIMEText(text, 'plain')
 	part2 = MIMEText(html, 'html')
 
+
 	# Attach parts into message container.
 	# According to RFC 2046, the last part of a multipart message, in this case
 	# the HTML message, is best and preferred.
@@ -73,13 +75,19 @@ def send(email):
 	# and message to send - here it is sent as one string.
 	s.sendmail(sndr, rcvr, msg.as_string())
 	s.quit()
+	print '[%d] SENT' % num
 
 if __name__ == '__main__':
 	if len(sys.argv) != 2:
-		raise ValueError('Usage: python send_mail.py <email.json>')
+		raise ValueError('Usage: python send_mail.py <emails.json>')
 
 	FILENAME = sys.argv[1]
 
 	with open(FILENAME) as f:
-		email = json.load(f)
-		send(email)
+		emails = json.load(f)
+		threads = []
+		for i, email in enumerate(emails):
+			print '[%d] Sending email to %s' % (i, email['to'])
+			t = threading.Thread(target = send, args = (email, i))
+			threads.append(t)
+			t.start()
