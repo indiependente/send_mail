@@ -6,10 +6,12 @@ email: rockerg991@gmail.com
 
 import os
 import sys
+import argparse
+import threading
 import json
 import urllib2
 import smtplib
-import threading
+import copy
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -56,16 +58,26 @@ def send(email, num):
 	print '[%d] SENT' % num
 
 if __name__ == '__main__':
-	if len(sys.argv) != 2:
-		raise ValueError('Usage: python send_mail.py <emails.json>')
+	parser = argparse.ArgumentParser()
+	parser.add_argument('filename', type = str, help='The JSON input file name - must be in the current working directory')
+	parser.add_argument('-b', '--batch', type = int, help='Batch mode - it will pick the first email object from the input file and send <BATCH> emails. It will append a counter to the subject of every email being sent.')
+	args = parser.parse_args()
+	
 
-	FILENAME = sys.argv[1]
-
-	with open(FILENAME) as f:
+	with open(args.filename) as f:
 		emails = json.load(f)
 		threads = []
-		for i, email in enumerate(emails):
-			print '[%d] Sending email to %s' % (i, email['to'])
-			t = threading.Thread(target = send, args = (email, i))
-			threads.append(t)
-			t.start()
+		if args.batch is None:
+			for i, email in enumerate(emails):
+				print '[%d] Sending email to %s' % (i, email['to'])
+				t = threading.Thread(target = send, args = (email, i))
+				threads.append(t)
+				t.start()
+		else:
+			for i in xrange(args.batch):
+				template = copy.deepcopy(emails[0])
+				template['subject'] = template['subject'] + ' ' + str(i+1)
+				print '[%d] Sending email to %s' % (i, template['to'])
+				t = threading.Thread(target = send, args = (template, i))
+				threads.append(t)
+				t.start()
