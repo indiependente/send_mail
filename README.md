@@ -2,7 +2,7 @@
 
 ## Python email client
 ```
-usage: send_mail.py [-h] [-b BATCH] filename
+usage: send_mail.py [-h] [-b BATCH] [-c CREDENTIALS] filename
 
 positional arguments:
   filename              The JSON input file name - must be in the current
@@ -14,12 +14,17 @@ optional arguments:
                         Batch mode - it will pick the first email object from
                         the input file and send <BATCH> emails. It will append
                         a counter to the subject of every email being sent.
+  -c CREDENTIALS, --credentials CREDENTIALS
+                        Read credentials from external file - applies those
+                        credentials to every email
+
 ```
 ### Supported features
 * Parallel threaded email sending
 * Batch mode
 * Multipart content
 * Read HTML from file
+* Read SMTP credentials from external file
 
 ## Email object
 Main email properties listed in the JSON object.
@@ -66,6 +71,16 @@ SMTP account credentials: `username` and `password`.
 ]
 ```
 
+## Credentials file
+```json
+{
+	"smtp"		:	"smtp.example.com",
+	"port"		:	"587",
+	"username"	:	"username",
+	"password"	:	"password"
+}
+```
+
 ### ToDo
 - [ ] Error checking
 - [ ] Email object encryption
@@ -75,3 +90,4 @@ SMTP account credentials: `username` and `password`.
     - Provide a JSON array of email objects
 - [x] Batch mode
 	- Picks the first email object of the array contained in the input file and sends N copy of that email (adds a counter to the subject)
+- [x] External credential file
