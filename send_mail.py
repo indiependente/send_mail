@@ -57,6 +57,7 @@ def send(email, num, creds=None):
 		port = creds['port']
 		username = creds['username']
 		password = creds['password']
+
 	s = smtplib.SMTP(server + ":" + port)
 	s.ehlo()
 	s.starttls()
@@ -85,7 +86,7 @@ if __name__ == '__main__':
 		if args.batch is None:
 			for i, email in enumerate(emails):
 				print '[%d] Sending email to %s' % (i, email['to'])
-				t = threading.Thread(target = send, args = (email, i))
+				t = threading.Thread(target = send, args = (email, i, creds))
 				threads.append(t)
 				t.start()
 		else:
@@ -93,6 +94,6 @@ if __name__ == '__main__':
 				template = copy.deepcopy(emails[0])
 				template['subject'] = template['subject'] + ' ' + str(i+1)
 				print '[%d] Sending email to %s' % (i, template['to'])
-				t = threading.Thread(target = send, args = (template, i))
+				t = threading.Thread(target = send, args = (template, i, creds))
 				threads.append(t)
 				t.start()
