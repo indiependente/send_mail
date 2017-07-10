@@ -17,7 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-def send(email, num):
+def send(email, num, creds=None):
 	CWD = os.getcwd()
 
 	sndr = email['from']
@@ -47,10 +47,20 @@ def send(email, num):
 	msg.attach(part2)
 
 	# Send the message via an SMTP server.
-	s = smtplib.SMTP(email['smtp'] + ":" + email['port'])
+	if creds is None:
+		server = email['smtp']
+		port = email['port']
+		username = email['username']
+		password = email['password']
+	else:
+		server = creds['smtp']
+		port = creds['port']
+		username = creds['username']
+		password = creds['password']
+	s = smtplib.SMTP(server + ":" + port)
 	s.ehlo()
 	s.starttls()
-	s.login(email['username'], email['password'])
+	s.login(username, password)
 	# sendmail function takes 3 arguments: sender's address, recipient's address
 	# and message to send - here it is sent as one string.
 	s.sendmail(sndr, rcvr, msg.as_string())
@@ -61,8 +71,13 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('filename', type = str, help='The JSON input file name - must be in the current working directory')
 	parser.add_argument('-b', '--batch', type = int, help='Batch mode - it will pick the first email object from the input file and send <BATCH> emails. It will append a counter to the subject of every email being sent.')
+	parser.add_argument('-c', '--credentials', type = str, help='Read credentials from external file - applies those credentials to every email')
 	args = parser.parse_args()
 	
+	if args.credentials is None:
+		creds = None
+	else:
+		creds = json.load(open(args.credentials))
 
 	with open(args.filename) as f:
 		emails = json.load(f)
