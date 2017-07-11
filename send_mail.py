@@ -15,6 +15,7 @@ import urllib2
 import smtplib
 import copy
 import logging
+from utils import print_progress
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -76,18 +77,26 @@ def send(email, num, creds=None):
 			# sendmail function takes 3 arguments: sender's address, recipient's address
 			# and message to send - here it is sent as one string.
 			s.sendmail(sndr, rcvr, msg.as_string())
-		except Exception as e:
+			s.quit()
+		except smtplib.SMTPDataError as e:
 			backoff = random.uniform(0, ((2 ** tentative) - 1)) + (num / 10)
-			logging.warning('[%d] tentative #%d failed. Retrying in %f seconds ...' % (num, tentative, backoff))
+			logging.warning('\t[%d] tentative #%d failed. Retrying in %f seconds ...' % (num, tentative, backoff))
 			sleep(backoff)
 			tentative += 1
+		except Exception as e:
+			logging.error('\t[%d] Tentative %d - Unhandled exception: %s' % (num, tentative, str(e)))
+			if e.args[0] == 454:
+				break
 		else:
 			notSent = False
-			s.quit()
 			logging.info('[%d] SENT' % num)
+		
 	if tentative >= maxTentative:
 		logging.error('[%d] EMAIL NOT SENT: exceeded tentatives limit' % num)
 
+
+# this needs to be solved with the Producer / Consumer pattern
+# using a concurrent Queue
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
@@ -103,22 +112,22 @@ if __name__ == '__main__':
 	else:
 		creds = json.load(open(args.credentials))
 
-	if args.verbose is None:
-		logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
-	else:
-		logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
-
+	logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG if args.verbose else logging.ERROR)
 
 	with open(args.filename) as f:
 		emails = json.load(f)
 		threads = []
+
 		if args.batch is None:
+			total = len(emails)
 			for i, email in enumerate(emails):
 				logging.debug('[%d] Sending email to %s' % (i, email['to']))
 				t = threading.Thread(target = send, args = (email, i, creds))
 				threads.append(t)
 				t.start()
+
 		else:
+			total = args.batch
 			for i in xrange(args.batch):
 				template = copy.deepcopy(emails[0])
 				template['subject'] = template['subject'] + ' ' + str(i+1)
@@ -126,3 +135,13 @@ if __name__ == '__main__':
 				t = threading.Thread(target = send, args = (template, i, creds))
 				threads.append(t)
 				t.start()
+
+		if not args.verbose:
+			print_progress(0, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
+			t_done = 0
+			while True:
+				t_done = len([t.is_alive() for t in threads if not t.is_alive()])
+				print_progress(t_done, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
+				if t_done == total:
+					break
+			print_progress(t_done, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
