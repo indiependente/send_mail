@@ -2,7 +2,8 @@
 
 ## Python email client
 ```
-usage: send_mail.py [-h] [-b BATCH] [-c CREDENTIALS] filename
+usage: send_mail.py [-h] [-b BATCH] [-c CREDENTIALS] [-t] [-v] [--version]
+                    filename
 
 positional arguments:
   filename              The JSON input file name - must be in the current
@@ -17,7 +18,9 @@ optional arguments:
   -c CREDENTIALS, --credentials CREDENTIALS
                         Read credentials from external file - applies those
                         credentials to every email
-
+  -t, --threads         Split the work among threads
+  -v, --verbose         Verbose output
+  --version             show program's version number and exit
 ```
 ### Supported features
 * Parallel threaded email sending
