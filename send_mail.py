@@ -6,6 +6,11 @@ email: rockerg991@gmail.com
 
 import os
 import sys
+IS_PY2 = sys.version_info < (3, 0)
+if IS_PY2:
+    from Queue import Queue
+else:
+    from queue import Queue
 import argparse
 import threading
 from time import sleep
@@ -103,6 +108,7 @@ if __name__ == '__main__':
 	parser.add_argument('filename', type = str, help='The JSON input file name - must be in the current working directory')
 	parser.add_argument('-b', '--batch', type = int, help='Batch mode - it will pick the first email object from the input file and send <BATCH> emails. It will append a counter to the subject of every email being sent.')
 	parser.add_argument('-c', '--credentials', type = str, help='Read credentials from external file - applies those credentials to every email')
+	parser.add_argument('-t', '--threads', action = 'store_true', default=False, dest='threads', help='Split the work among threads')
 	parser.add_argument('-v', '--verbose', action = 'store_true', default=False, dest='verbose', help='Verbose output')
 	parser.add_argument('--version', action='version', version='%(prog)s 0.3')
 	args = parser.parse_args()
@@ -112,6 +118,11 @@ if __name__ == '__main__':
 	else:
 		creds = json.load(open(args.credentials))
 
+	if args.threads:
+		logging.info('Threaded mode ON')
+	else:
+		logging.info('Threaded mode OFF')
+
 	logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG if args.verbose else logging.ERROR)
 
 	with open(args.filename) as f:
@@ -120,23 +131,37 @@ if __name__ == '__main__':
 
 		if args.batch is None:
 			total = len(emails)
+			if not args.threads:
+				print_progress(0, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
 			for i, email in enumerate(emails):
 				logging.debug('[%d] Sending email to %s' % (i, email['to']))
-				t = threading.Thread(target = send, args = (email, i, creds))
-				threads.append(t)
-				t.start()
+				if args.threads:
+					t = threading.Thread(target = send, args = (email, i, creds))
+					threads.append(t)
+					t.start()
+				else:
+					send(email, i, creds)
+					print_progress(i+1, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
 
 		else:
 			total = args.batch
+			if not args.threads:
+				print_progress(0, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
 			for i in xrange(args.batch):
 				template = copy.deepcopy(emails[0])
 				template['subject'] = template['subject'] + ' ' + str(i+1)
 				logging.debug('[%d] Sending email to %s' % (i, template['to']))
-				t = threading.Thread(target = send, args = (template, i, creds))
-				threads.append(t)
-				t.start()
+				if args.threads:
+					t = threading.Thread(target = send, args = (template, i, creds))
+					threads.append(t)
+					t.start()
+				else:
+					send(template, i, creds)
+					print_progress(i+1, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
 
-		if not args.verbose:
+				
+
+		if args.threads and not args.verbose:
 			print_progress(0, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
 			t_done = 0
 			while True:
@@ -144,4 +169,3 @@ if __name__ == '__main__':
 				print_progress(t_done, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
 				if t_done == total:
 					break
-			print_progress(t_done, total, prefix = 'Progress:', suffix = 'Complete', bar_length = 50)
